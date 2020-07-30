@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import loadMNIST
 
 
 def sigmoid(z):
