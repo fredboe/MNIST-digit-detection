@@ -15,11 +15,14 @@ class Network:
 
     def __init__(self, layers):
         self.layers = layers
-        self.weights = [np.random.randn(a, b) for a, b in zip(layers[1:], layers[0:])]
-        self.biases = [np.random.randn(layer) for layer in layers[1:]]
+        self.len_layers = len(layers)
+        self.weights, self.biases = self.initialize(self.layers)
 
-    def initialize(self):
-        pass
+    def initialize(self, layers):
+        #/np.sqrt(b)
+        weights = [np.random.randn(a, b) for a, b in zip(layers[1:], layers[0:])]
+        biases = [np.random.randn(layer) for layer in layers[1:]]
+        return weights, biases
 
     def feedforward(self, a):
         for w, b in zip(self.weights, self.biases):
@@ -67,11 +70,12 @@ class Network:
         # feedforward
         a, z = self.all_as_zs(a_in)
         # output error
-        error = np.multiply(self.cost_derivative(a[-1], y), sigmoid_derivative(z[-1]))
+        # error = np.multiply(self.cost_derivative(a[-1], y, z[-1]), sigmoid_derivative(z[-1]))
+        error = self.out_layer_error_cross_entropy(a[-1], y)
         change_b.append(error)
         change_w.append(np.multiply(error[None].T, a[-2]))
         # backpropagate the error
-        for i in range(2, len(self.layers)):
+        for i in range(2, self.len_layers):
             weight = np.transpose(self.weights[-i+1])
             error = np.multiply(np.dot(weight, error), sigmoid_derivative(z[-i]))
             # output: gradient -> multiply with a
@@ -79,14 +83,20 @@ class Network:
             change_w.append(np.multiply(error[None].T, a[-i-1]))
         return change_w[::-1], change_b[::-1]
 
-    def cost_function(self, a_out, y):
-        return 0.5*(a_out-y)**2
-
-    def cost_derivative(self, a_out, y):
+    def out_layer_error_cross_entropy(self, a_out, y):
         return (a_out-y)
 
+    def cost_function(self, a_out, y, z):
+        return 0.5*(a_out-y)**2
+
+    def cost_derivative(self, a_out, y, z):
+        return (a_out-y)
+
+    def cross_entropy(self, a_out, y, z):
+        return (a_out-y)/sigmoid_derivative(z)
+
     def performance(self, test_data):
-        return sum([net.predict(d) == np.argmax(l) for d, l in test_data])/len(x_test)
+        return sum([net.predict(d) == np.argmax(l) for d, l in test_data])/len(test_data)
 
 
 if __name__ == "__main__":
@@ -95,5 +105,5 @@ if __name__ == "__main__":
     test_data = list(zip(x_test, y_test))
     net = Network([784, 30, 10])
     print(net.performance(test_data))
-    net.SGD(train_data, test_data, epochs=10)
+    net.SGD(train_data, test_data)
     print("Resulted performance: {perf}".format(perf=net.performance(test_data)))
