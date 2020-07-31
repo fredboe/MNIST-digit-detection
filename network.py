@@ -41,67 +41,59 @@ class Network:
         a_out = self.feedforward(a_in)
         return np.argmax(a_out)
 
-    def predict_help(self, a_in):
-        a_out = self.feedforward(a_in)
-        return a_out[np.argmax(a_out)]
-
-    def SGD(self, x_train, labels, x_test, y_test, learning_rate=3.0, epochs=3, mini_size=30):
-        together = list(zip(x_train, labels))
+    def SGD(self, train_data, test_data, learning_rate=3.0, epochs=10, mini_size=30):
         for epoch in range(1, epochs+1):
             print("Epoch: {epoch}".format(epoch=epoch))
-            random.shuffle(together)
-            for i in range(0, len(together), mini_size):
-                # print("MiniBatch: {index}".format(index=i/32))
-                mini_batch = together[i:i+mini_size]
+            random.shuffle(train_data)
+            for i in range(0, len(train_data), mini_size):
+                mini_batch = train_data[i:i+mini_size]
                 self.updateWB(mini_batch, learning_rate)
-            print("Performance at epoch {epoch}: {perf}".format(epoch=epoch, perf=self.performance(x_test, y_test)))
+            print("Performance at epoch {epoch}: {perf}".format(epoch=epoch, perf=self.performance(test_data)))
 
     def updateWB(self, mini_batch, lrate):
         length = len(mini_batch)
-        change_w = [np.zeros([a, b]) for a, b in zip(self.layers[1:], self.layers[0:])]
-        change_b = [np.zeros(layer) for layer in self.layers[1:]]
+        change_w = [np.zeros(w.shape) for w in self.weights]
+        change_b = [np.zeros(b.shape) for b in self.biases]
         for sample in mini_batch:
             change_w_delta, change_b_delta = self.backprop(sample[1], sample[0])
             change_w = [w1+w2 for w1, w2 in zip(change_w, change_w_delta)]
             change_b = [b1+b2 for b1, b2 in zip(change_b, change_b_delta)]
-        self.weights = [w+(lrate/length)*wc for w, wc in zip(self.weights, change_w)]
-        self.biases = [b+(lrate/length)*bc for b, bc in zip(self.biases, change_b)]
+        self.weights = [w-(lrate/length)*wc for w, wc in zip(self.weights, change_w)]
+        self.biases = [b-(lrate/length)*bc for b, bc in zip(self.biases, change_b)]
 
     def backprop(self, y, a_in):
-        change_w=[]
-        change_b=[]
+        change_w = []
+        change_b = []
         # feedforward
         a, z = self.all_as_zs(a_in)
         # output error
-        error = np.multiply(self.cost_derivative(y, a[-1]), sigmoid_derivative(z[-1]))
+        error = np.multiply(self.cost_derivative(a[-1], y), sigmoid_derivative(z[-1]))
         change_b.append(error)
-        change_w.append(np.multiply(a[-2], error[None].T))
+        change_w.append(np.multiply(error[None].T, a[-2]))
         # backpropagate the error
         for i in range(2, len(self.layers)):
             weight = np.transpose(self.weights[-i+1])
             error = np.multiply(np.dot(weight, error), sigmoid_derivative(z[-i]))
             # output: gradient -> multiply with a
             change_b.append(error)
-            change_w.append(np.multiply(a[-i-1], error[None].T))
+            change_w.append(np.multiply(error[None].T, a[-i-1]))
         return change_w[::-1], change_b[::-1]
 
-    def cost_function(self, y, a_out):
-        return 0.5*(y-a_out)**2
+    def cost_function(self, a_out, y):
+        return 0.5*(a_out-y)**2
 
-    def cost_derivative(self, y, a_out):
-        return (y-a_out)
+    def cost_derivative(self, a_out, y):
+        return (a_out-y)
 
-    def performance(self, x_test, labels):
-        counter = 0
-        for data, label in zip(x_test, labels):
-            if net.predict(data) == np.argmax(label):
-                counter += 1
-        return counter/10000
+    def performance(self, test_data):
+        return sum([net.predict(d) == np.argmax(l) for d, l in test_data])/len(x_test)
 
 
 if __name__ == "__main__":
     (x_train, y_train), (x_test, y_test) = loadMNIST.loadMNIST()
+    train_data = list(zip(x_train, y_train))
+    test_data = list(zip(x_test, y_test))
     net = Network([784, 30, 10])
-    print(net.performance(x_test, y_test))
-    net.SGD(x_train, y_train, x_test, y_test, epochs=10)
-    # print(net.performance(x_test, y_test))
+    print(net.performance(test_data))
+    net.SGD(train_data, test_data, epochs=10)
+    print("Resulted performance: {perf}".format(perf=net.performance(test_data)))
