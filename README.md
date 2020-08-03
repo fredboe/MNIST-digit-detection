@@ -3,8 +3,6 @@
 ## Project
 This project contains a basic implementation of a neural network. The goal of the network is to predict the MNIST dataset.
 
-I plan to add some other AI techniques in the future that can also be trained with the MNIST dataset.
-
 ## Execute the code
 To see the result of the code is just execute network.py.
 ```
